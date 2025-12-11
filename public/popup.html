@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>招聘数据采集器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+        'Helvetica Neue', sans-serif;
+      width: 500px;
+      max-height: 700px;
+      background: #f8f9fa;
+    }
+    
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    .shadow-card {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .shadow-elevated {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .gradient-primary {
+      background: linear-gradient(135deg, #2C5AA0 0%, #1e4620 100%);
+    }
+    
+    .transition-smooth {
+      transition: all 0.3s ease;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(44, 90, 160, 0.1);
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    
+    .badge-blue {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    
+    .badge-green {
+      background: #dcfce7;
+      color: #15803d;
+    }
+    
+    .badge-yellow {
+      background: #fef3c7;
+      color: #b45309;
+    }
+    
+    .badge-red {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 12px 16px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+    
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2C5AA0;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #666666;
+      margin-top: 4px;
+    }
+    
+    .button-primary {
+      background: linear-gradient(135deg, #2C5AA0 0%, #1a3a6b 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .button-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(44, 90, 160, 0.3);
+    }
+    
+    .button-primary:active {
+      transform: translateY(0);
+    }
+    
+    .button-secondary {
+      background: white;
+      color: #2C5AA0;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .button-secondary:hover {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+    }
+    
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: white;
+      border: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: #666666;
+    }
+    
+    .icon-btn:hover {
+      background: #f3f4f6;
+      color: #2C5AA0;
+    }
+    
+    .job-card {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: 1px solid #e5e7eb;
+      transition-smooth;
+      cursor: pointer;
+    }
+    
+    .job-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-color: #2C5AA0;
+    }
+    
+    .job-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 6px;
+    }
+    
+    .job-info {
+      font-size: 12px;
+      color: #666666;
+      margin-bottom: 8px;
+    }
+    
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(44, 90, 160, 0.2);
+      border-radius: 50%;
+      border-top-color: #2C5AA0;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #e5e7eb;
+      background: white;
+    }
+    
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 500;
+      color: #666666;
+      border: none;
+      background: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    
+    .tab-btn.active {
+      color: #2C5AA0;
+    }
+    
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #2C5AA0;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999999;
+    }
+    
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+    .slider-wrapper {
+      padding: 10px 0;
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="../dist/popup.js"></script>
+</body>
+</html>
+
