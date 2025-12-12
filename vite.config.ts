@@ -1,28 +1,8 @@
+/**
+ * Vite 配置文件
+ * 使用 config 文件夹中的配置模块
+ */
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { viteConfig } from './config'
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    target: 'esnext',
-    minify: false,
-    outDir: 'dist',
-    emptyOutDir: false,
-    lib: {
-      entry: 'src/main.tsx',
-      name: 'RecruitmentCollector',
-      formats: ['iife'],
-      fileName: 'popup'
-    },
-    rollupOptions: {
-      output: {
-        entryFileNames: '[name].js',
-        assetFileNames: '[name][extname]'
-      }
-    }
-  },
-  server: {
-    port: 5173
-  }
-})
+export default defineConfig(viteConfig)

@@ -1,10 +1,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import Popup from './popup.tsx'
+import App from './popup'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Popup />
-  </StrictMode>,
-)
+// 确保 DOM 已准备好
+const rootElement = document.getElementById('root')
+if (rootElement) {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+}
