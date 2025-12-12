@@ -13,7 +13,11 @@
     "default_title": "招聘数据采集器"
   },
   "permissions": [
-    "storage",
+    "contextMenus",
+    "tabs",
+    "notifications",
+    "webRequest",
+    "storage", 
     "alarms",
     "activeTab",
     "scripting"
@@ -30,6 +34,10 @@
       "matches": ["https://www.zhipin.com/*"],
       "js": ["content-script.js"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }
+
 

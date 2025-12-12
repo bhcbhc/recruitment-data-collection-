@@ -3,6 +3,15 @@
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'FETCH_JOBS') {
+    if (!request.config || !request.params) {
+      sendResponse({ 
+        success: false, 
+        error: '缺少必要的配置参数',
+        data: []
+      });
+      return true;
+    }
+    
     fetchJobsFromZhipin(request.config, request.params)
       .then(data => {
         sendResponse({ success: true, data: data });
@@ -11,7 +20,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.error('Fetch error:', error);
         sendResponse({ 
           success: false, 
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           data: []
         });
       });
@@ -26,6 +35,10 @@ async function fetchJobsFromZhipin(config, params) {
   try {
     const url = `https://www.zhipin.com/wapi/zpgeek/pc/recommend/job/list.json?${params}`;
     
+    // 使用 AbortController 实现请求超时
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+    
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -34,11 +47,14 @@ async function fetchJobsFromZhipin(config, params) {
         'Referer': 'https://www.zhipin.com/',
         'X-Requested-With': 'XMLHttpRequest'
       },
-      credentials: 'include'
+      credentials: 'include',
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      throw new Error(`HTTP Error: ${response.status}`);
+      throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
     }
 
     const jsonData = await response.json();
@@ -57,8 +73,8 @@ async function fetchJobsFromZhipin(config, params) {
  */
 function parseZhipinData(data, config) {
   try {
-    // 处理实际返回的数据格式
-    if (data.code !== 0 && data.zpData) {
+    // 处理实际返回的数据格式 - 检查是否请求成功
+    if (data.code !== 0 || !data.zpData) {
       console.log('API返回异常:', data.message);
       return generateMockData(config);
     }

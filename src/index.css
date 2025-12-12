@@ -50,6 +50,9 @@ body {
     'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  width: 550px;
+  font-size: 13px;
+  background-color: #FFF;
 }
 
 #root {

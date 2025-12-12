@@ -11,11 +11,16 @@ interface ChromeAPI {
   storage: {
     local: {
       get: (keys: string[], callback: (result: Record<string, unknown>) => void) => void
-      set: (data: Record<string, unknown>) => void
+      set: (data: Record<string, unknown>, callback?: () => void) => void
+      remove: (keys: string | string[], callback?: () => void) => void
+      clear: (callback?: () => void) => void
     }
   }
   runtime: {
-    sendMessage: (message: unknown, callback: (response: unknown) => void) => void
+    sendMessage: (message: unknown, callback?: (response: unknown) => void) => void
+    onMessage: {
+      addListener: (callback: (message: unknown, sender: unknown, sendResponse: (response: unknown) => void) => void) => void
+    }
   }
 }
 
@@ -44,17 +49,34 @@ const getChromeAPI = (): ChromeAPI => {
           })
           callback(result)
         },
-        set: (data: Record<string, unknown>) => {
+        set: (data: Record<string, unknown>, callback?: () => void) => {
           Object.entries(data).forEach(([key, value]) => {
             localStorage.setItem(key, JSON.stringify(value))
           })
+          callback?.()
+        },
+        remove: (keys: string | string[], callback?: () => void) => {
+          const keyArray = Array.isArray(keys) ? keys : [keys]
+          keyArray.forEach(key => {
+            localStorage.removeItem(key)
+          })
+          callback?.()
+        },
+        clear: (callback?: () => void) => {
+          localStorage.clear()
+          callback?.()
         }
       }
     },
     runtime: {
-      sendMessage: (_msg: unknown, callback: (response: unknown) => void) => {
+      sendMessage: (_msg: unknown, callback?: (response: unknown) => void) => {
         console.log('Mock chrome.runtime.sendMessage:', _msg)
-        callback({ success: false, error: '本地开发模式下不可用' })
+        callback?.({ success: false, error: '本地开发模式下不可用' })
+      },
+      onMessage: {
+        addListener: () => {
+          // Mock implementation
+        }
       }
     }
   }
@@ -138,29 +160,42 @@ export default function App() {
           params: params.toString()
         },
         (response: unknown) => {
-          const fetchResponse = response as { success: boolean; data?: JobData[] }
-          if (fetchResponse && fetchResponse.success) {
-            // 更新统计信息
-            const newStats: CollectionStats = {
-              total: fetchResponse.data?.length || 0,
-              lastUpdate: new Date().toLocaleString('zh-CN'),
-              source: 'BOSS直聘'
+          try {
+            const fetchResponse = response as { success: boolean; data?: JobData[]; error?: string }
+            if (!fetchResponse) {
+              console.error('No response from service worker')
+              setLoading(false)
+              return
             }
-            setStats(newStats)
-            getChromeAPI().storage.local.set({ stats: newStats })
+            
+            if (fetchResponse.success && fetchResponse.data) {
+              // 更新统计信息
+              const newStats: CollectionStats = {
+                total: fetchResponse.data.length,
+                lastUpdate: new Date().toLocaleString('zh-CN'),
+                source: 'BOSS直聘'
+              }
+              setStats(newStats)
+              getChromeAPI().storage.local.set({ stats: newStats })
 
-            // 保存数据
-            setJobs(fetchResponse.data || [])
-            getChromeAPI().storage.local.set({ jobsData: fetchResponse.data || [] })
+              // 保存数据
+              setJobs(fetchResponse.data)
+              getChromeAPI().storage.local.set({ jobsData: fetchResponse.data })
 
-            // 切换到结果标签
-            setActiveTab('results')
+              // 切换到结果标签
+              setActiveTab('results')
+            } else {
+              console.error('Failed to fetch jobs:', fetchResponse.error)
+            }
+          } catch (error) {
+            console.error('Error processing response:', error)
+          } finally {
+            setLoading(false)
           }
         }
       )
     } catch (error) {
       console.error('Error:', error)
-    } finally {
       setLoading(false)
     }
   }
@@ -201,7 +236,7 @@ export default function App() {
         algorithm: theme.defaultAlgorithm,
       }}
     >
-      <Layout className="app-layout" style={{ width: '48rem'}}>
+      <Layout className="app-layout">
         <Header
           loading={loading}
           onRefresh={handleRefresh}
