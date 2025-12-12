@@ -12,18 +12,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
     
-    fetchJobsFromZhipin(request.config, request.params)
-      .then(data => {
-        sendResponse({ success: true, data: data });
-      })
-      .catch(error => {
-        console.error('Fetch error:', error);
-        sendResponse({ 
-          success: false, 
-          error: error instanceof Error ? error.message : String(error),
-          data: []
+    // 根据网站类型调用不同的采集函数
+    if (request.config.website === 'boss') {
+      fetchJobsFromZhipin(request.config, request.params)
+        .then(data => {
+          sendResponse({ success: true, data: data });
+        })
+        .catch(error => {
+          console.error('Fetch error:', error);
+          sendResponse({ 
+            success: false, 
+            error: error instanceof Error ? error.message : String(error),
+            data: []
+          });
         });
-      });
+    } else {
+      // 其他网站的采集逻辑
+      fetchJobsFromOther(request.config, request.params)
+        .then(data => {
+          sendResponse({ success: true, data: data });
+        })
+        .catch(error => {
+          console.error('Fetch error:', error);
+          sendResponse({ 
+            success: false, 
+            error: error instanceof Error ? error.message : String(error),
+            data: []
+          });
+        });
+    }
     return true; // 异步响应
   }
 });
@@ -64,6 +81,20 @@ async function fetchJobsFromZhipin(config, params) {
   } catch (error) {
     console.error('Failed to fetch from Zhipin:', error);
     // 返回模拟数据用于演示
+    return generateMockData(config);
+  }
+}
+
+/**
+ * 从其他网站采集数据
+ */
+async function fetchJobsFromOther(config, params) {
+  try {
+    // 这里可以根据不同的网站配置调用相应的API
+    console.log('Fetching from other website:', config.website);
+    return generateMockData(config);
+  } catch (error) {
+    console.error('Failed to fetch from other website:', error);
     return generateMockData(config);
   }
 }
@@ -231,33 +262,35 @@ function generateMockData(config) {
   });
 }
 
-// 监听插件安装
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    console.log('Extension installed successfully');
-    // 初始化存储
-    chrome.storage.local.set({
-      filterConfig: {
-        website: 'boss',
-        city: '101010100',
-        district: '',
-        jobTitle: '',
-        jobType: '',
-        minAge: 25,
-        maxAge: 35,
-        minSalary: 15,
-        maxSalary: 25,
-        skills: ['React', 'Vue', 'Node.js']
-      },
-      jobsData: [],
-      stats: {
-        total: 0,
-        lastUpdate: '',
-        source: 'BOSS直聘'
-      }
-    });
-  }
-});
+/**
+ * 初始化存储
+ */
+function initializeStorage() {
+  chrome.storage.local.set({
+    filterConfig: {
+      website: 'boss',
+      city: '101010100',
+      district: '',
+      jobTitle: '',
+      jobCategory: '',
+      jobType: '',
+      jobSubType: '',
+      salary: [],
+      degree: [],
+      jobRecType: [],
+      experience: [],
+      minAge: 25,
+      maxAge: 35,
+      skills: ['React', 'Vue', 'Node.js']
+    },
+    jobsData: [],
+    stats: {
+      total: 0,
+      lastUpdate: '',
+      source: 'BOSS直聘'
+    }
+  });
+}
 
 // 定时任务（可选）
 chrome.alarms.create('fetchJobsDaily', { periodInMinutes: 60 });

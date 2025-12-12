@@ -16,13 +16,14 @@
     "contextMenus",
     "tabs",
     "notifications",
-    "webRequest",
+    
     "storage", 
     "alarms",
     "activeTab",
     "scripting"
   ],
   "host_permissions": [
+    "http://localhost:5173/*",
     "https://www.zhipin.com/*",
     "https://*.zhipin.com/*"
   ],

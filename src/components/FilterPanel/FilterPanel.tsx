@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
-import { Card, Input, Select, Slider, Tag, Button, Space, message } from 'antd'
+import React, { useState, useEffect } from 'react'
+import { Card, Input, Select, Slider, Tag, Button, Space, message, Spin } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
-import type { FilterConfig } from '../../types'
+import type { FilterConfig, CityOption, JobCategory } from '../../types'
+import { fetchCities, fetchJobPositions, SALARY_OPTIONS, DEGREE_OPTIONS, JOB_REC_TYPE_OPTIONS, EXPERIENCE_OPTIONS } from '../../services/api'
 import './FilterPanel.less'
 
 const WEBSITES = [
@@ -10,42 +11,6 @@ const WEBSITES = [
   { value: '51job', label: '51Job' },
   { value: 'zhaopin', label: '智联招聘' },
   { value: 'maimengaoping', label: '脉脉高聘' }
-]
-
-const CITIES = [
-  { value: '101010100', label: '北京' },
-  { value: '101020100', label: '上海' },
-  { value: '101210100', label: '深圳' },
-  { value: '101280100', label: '杭州' },
-  { value: '101190400', label: '南京' }
-]
-
-const CITY_DISTRICTS: Record<string, Array<{ value: string; label: string }>> = {
-  '101010100': [
-    { value: '1', label: '朝阳区' },
-    { value: '2', label: '海淀区' },
-    { value: '3', label: '东城区' },
-    { value: '4', label: '西城区' },
-    { value: '5', label: '丰台区' }
-  ],
-  '101020100': [
-    { value: '1', label: '浦东新区' },
-    { value: '2', label: '静安区' },
-    { value: '3', label: '黄浦区' },
-    { value: '4', label: '长宁区' }
-  ],
-  '101210100': [
-    { value: '1', label: '南山区' },
-    { value: '2', label: '福田区' },
-    { value: '3', label: '罗湖区' },
-    { value: '4', label: '龙华区' }
-  ]
-}
-
-const JOB_TYPES = [
-  { value: '1901', label: '全职' },
-  { value: '1902', label: '兼职' },
-  { value: '1903', label: '实习' }
 ]
 
 interface FilterPanelProps {
@@ -62,10 +27,46 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   onRefresh
 }) => {
   const [skillInput, setSkillInput] = useState('')
+  const [cities, setCities] = useState<CityOption[]>([])
+  const [jobCategories, setJobCategories] = useState<JobCategory[]>([])
+  const [loadingCities, setLoadingCities] = useState(false)
+  const [loadingPositions, setLoadingPositions] = useState(false)
+
+  // 获取城市列表
+  useEffect(() => {
+    if (config.website === 'boss') {
+      setLoadingCities(true)
+      fetchCities()
+        .then(data => {
+          setCities(data)
+          setLoadingCities(false)
+        })
+        .catch(() => {
+          setLoadingCities(false)
+        })
+    }
+  }, [config.website])
+
+  // 获取职位分类
+  useEffect(() => {
+    if (config.website === 'boss' && config.city) {
+      setLoadingPositions(true)
+      fetchJobPositions(config.city.toString())
+        .then(data => {
+          setJobCategories(data)
+          setLoadingPositions(false)
+        })
+        .catch(() => {
+          setLoadingPositions(false)
+        })
+    }
+  }, [config.website, config.city])
 
   const handleCityChange = (city: string) => {
     onConfigChange('city', city)
     onConfigChange('district', '')
+    onConfigChange('jobCategory', '')
+    onConfigChange('jobType', '')
   }
 
   const addSkill = () => {
@@ -84,25 +85,66 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     onConfigChange('skills', newSkills)
   }
 
-  const cityOptions = CITIES.map(city => ({
-    label: city.label,
-    value: city.value
-  }))
-
-  const districtOptions = (CITY_DISTRICTS[config.city] || []).map(district => ({
-    label: district.label,
-    value: district.value
-  }))
-
-  const jobTypeOptions = JOB_TYPES.map(type => ({
-    label: type.label,
-    value: type.value
-  }))
-
   const websiteOptions = WEBSITES.map(site => ({
     label: site.label,
     value: site.value
   }))
+
+  // 城市选项 - 仅当选择BOSS直聘时才显示动态城市
+  const cityOptions = config.website === 'boss' 
+    ? cities.map(city => ({
+        label: city.name,
+        value: city.code.toString()
+      }))
+    : [{ label: '北京', value: '101010100' }]
+
+  // 职位分类选项
+  const jobCategoryOptions = jobCategories.map(category => ({
+    label: category.name,
+    value: category.code.toString()
+  }))
+
+  // 职位类型选项（二级）
+  const currentCategory = jobCategories.find(cat => cat.code.toString() === config.jobCategory)
+  const jobTypeOptions = currentCategory?.subLevelModelList?.map(position => ({
+    label: position.name,
+    value: position.code.toString()
+  })) || []
+
+  // 获取选中职位类型的第三级数据（如果存在）
+  const currentJobType = currentCategory?.subLevelModelList?.find(pos => pos.code.toString() === config.jobType)
+  const jobSubTypeOptions = currentJobType?.subLevelModelList?.map(subType => ({
+    label: subType.name,
+    value: subType.code.toString()
+  })) || []
+
+  // 薪资选项
+  const salaryOptions = Object.entries(SALARY_OPTIONS).map(([code, label]) => ({
+    label,
+    value: code
+  }))
+
+  // 学历选项
+  const degreeOptions = Object.entries(DEGREE_OPTIONS).map(([code, label]) => ({
+    label,
+    value: code
+  }))
+
+  // 求职类型选项
+  const jobRecTypeOptions = Object.entries(JOB_REC_TYPE_OPTIONS)
+    .filter(([code]) => code !== '0')
+    .map(([code, label]) => ({
+      label,
+      value: code
+    }))
+
+  // 工作经验选项
+  const experienceOptions = Object.entries(EXPERIENCE_OPTIONS)
+    .filter(([code]) => code !== '0')
+    .map(([code, label]) => ({
+      label,
+      value: code
+    }))
 
   return (
     <div className="filter-panel">
@@ -130,92 +172,174 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               />
             </div>
 
-            <div className="filter-group">
-              <label className="filter-label">城市与地区</label>
-              <Space
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  gap: '8px'
-                }}
-                size={0}
-              >
+            {/* BOSS直聘特定的筛选选项 */}
+            {config.website === 'boss' && (
+              <>
+                <div className="filter-group">
+                  <label className="filter-label">城市</label>
+                  <Spin spinning={loadingCities}>
+                    <Select
+                      value={config.city}
+                      onChange={handleCityChange}
+                      options={cityOptions}
+                      placeholder="选择城市"
+                      style={{ width: '100%' }}
+                      loading={loadingCities}
+                    />
+                  </Spin>
+                </div>
+
+                <div className="filter-group">
+                  <label className="filter-label">职位分类</label>
+                  <Spin spinning={loadingPositions}>
+                    <Select
+                      value={config.jobCategory}
+                      onChange={(value) => {
+                        onConfigChange('jobCategory', value)
+                        onConfigChange('jobType', '')
+                      }}
+                      options={jobCategoryOptions}
+                      placeholder="选择职位分类"
+                      style={{ width: '100%' }}
+                      loading={loadingPositions}
+                      allowClear
+                    />
+                  </Spin>
+                </div>
+
+                <div className="filter-group">
+                  <label className="filter-label">职位类型</label>
+                  <Select
+                    value={config.jobType}
+                    onChange={(value) => {
+                      onConfigChange('jobType', value)
+                      onConfigChange('jobSubType', '')
+                    }}
+                    options={jobTypeOptions}
+                    placeholder="选择职位类型"
+                    style={{ width: '100%' }}
+                    disabled={!config.jobCategory}
+                    allowClear
+                  />
+                </div>
+
+                {/* 第三级职位子类型（如果存在） */}
+                {jobSubTypeOptions.length > 0 && (
+                  <div className="filter-group">
+                    <label className="filter-label">职位详细类型</label>
+                    <Select
+                      value={config.jobSubType}
+                      onChange={(value) => onConfigChange('jobSubType', value)}
+                      options={jobSubTypeOptions}
+                      placeholder="选择职位详细类型"
+                      style={{ width: '100%' }}
+                      disabled={!config.jobType}
+                      allowClear
+                    />
+                  </div>
+                )}
+
+                <div className="filter-group">
+                  <label className="filter-label">薪资范围</label>
+                  <Select
+                    mode="multiple"
+                    value={config.salary || []}
+                    onChange={(value) => onConfigChange('salary', value)}
+                    options={salaryOptions}
+                    placeholder="选择薪资范围"
+                    style={{ width: '100%' }}
+                    maxTagCount="responsive"
+                  />
+                </div>
+
+                <div className="filter-group">
+                  <label className="filter-label">学历要求</label>
+                  <Select
+                    mode="multiple"
+                    value={config.degree || []}
+                    onChange={(value) => onConfigChange('degree', value)}
+                    options={degreeOptions}
+                    placeholder="选择学历要求"
+                    style={{ width: '100%' }}
+                    maxTagCount="responsive"
+                  />
+                </div>
+
+                <div className="filter-group">
+                  <label className="filter-label">求职类型</label>
+                  <Select
+                    mode="multiple"
+                    value={config.jobRecType || []}
+                    onChange={(value) => onConfigChange('jobRecType', value)}
+                    options={jobRecTypeOptions}
+                    placeholder="选择求职类型"
+                    style={{ width: '100%' }}
+                    maxTagCount="responsive"
+                  />
+                </div>
+
+                <div className="filter-group">
+                  <label className="filter-label">工作经验</label>
+                  <Select
+                    mode="multiple"
+                    value={config.experience || []}
+                    onChange={(value) => onConfigChange('experience', value)}
+                    options={experienceOptions}
+                    placeholder="选择工作经验"
+                    style={{ width: '100%' }}
+                    maxTagCount="responsive"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* 其他网站简化的选项 */}
+            {config.website !== 'boss' && (
+              <div className="filter-group">
+                <label className="filter-label">职位类型</label>
                 <Select
-                  value={config.city}
-                  onChange={handleCityChange}
-                  options={cityOptions}
-                  style={{ flex: 1, minWidth: 0 }}
-                />
-                <Select
-                  value={config.district}
-                  onChange={(value) => onConfigChange('district', value)}
-                  options={districtOptions}
-                  placeholder="选择区域"
-                  style={{ flex: 1, minWidth: 0 }}
+                  value={config.jobType}
+                  onChange={(value) => onConfigChange('jobType', value)}
+                  options={[
+                    { value: '1901', label: '全职' },
+                    { value: '1902', label: '兼职' },
+                    { value: '1903', label: '实习' }
+                  ]}
+                  placeholder="选择职位类型"
+                  style={{ width: '100%' }}
                   allowClear
                 />
-              </Space>
-            </div>
-
-            <div className="filter-group">
-              <label className="filter-label">职位类型</label>
-              <Select
-                value={config.jobType}
-                onChange={(value) => onConfigChange('jobType', value)}
-                options={jobTypeOptions}
-                placeholder="选择职位类型"
-                style={{ width: '100%' }}
-                allowClear
-              />
-            </div>
+              </div>
+            )}
           </Space>
         </Card>
 
-        {/* 薪资与年龄 */}
-        <Card title="薪资与年龄" type="inner">
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <div className="filter-group">
-              <label className="filter-label">
-                年龄范围: {config.minAge}-{config.maxAge}岁
-              </label>
-              <Slider
-                range
-                min={18}
-                max={65}
-                value={[config.minAge, config.maxAge]}
-                onChange={(values) => {
-                  onConfigChange('minAge', values[0])
-                  onConfigChange('maxAge', values[1])
-                }}
-                marks={{
-                  18: '18',
-                  65: '65'
-                }}
-              />
-            </div>
-
-            <div className="filter-group">
-              <label className="filter-label">
-                薪资范围: {config.minSalary}K-{config.maxSalary}K/月
-              </label>
-              <Slider
-                range
-                min={10}
-                max={100}
-                step={5}
-                value={[config.minSalary, config.maxSalary]}
-                onChange={(values) => {
-                  onConfigChange('minSalary', values[0])
-                  onConfigChange('maxSalary', values[1])
-                }}
-                marks={{
-                  10: '10K',
-                  100: '100K'
-                }}
-              />
-            </div>
-          </Space>
-        </Card>
+        {/* 年龄设置 */}
+        {config.website !== 'boss' && (
+          <Card title="年龄范围" type="inner">
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <div className="filter-group">
+                <label className="filter-label">
+                  年龄范围: {config.minAge}-{config.maxAge}岁
+                </label>
+                <Slider
+                  range
+                  min={18}
+                  max={65}
+                  value={[config.minAge, config.maxAge]}
+                  onChange={(values) => {
+                    onConfigChange('minAge', values[0])
+                    onConfigChange('maxAge', values[1])
+                  }}
+                  marks={{
+                    18: '18',
+                    65: '65'
+                  }}
+                />
+              </div>
+            </Space>
+          </Card>
+        )}
 
         {/* 技能标签 */}
         <Card title="技能标签" type="inner">
@@ -274,4 +398,3 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     </div>
   )
 }
-

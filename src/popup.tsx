@@ -98,11 +98,15 @@ export default function App() {
     city: '101010100',
     district: '',
     jobTitle: '',
+    jobCategory: '',
     jobType: '',
+    jobSubType: '',
+    salary: [],
+    degree: [],
+    jobRecType: [],
+    experience: [],
     minAge: 25,
     maxAge: 35,
-    minSalary: 15,
-    maxSalary: 25,
     skills: ['React', 'Vue', 'Node.js']
   })
 
@@ -135,67 +139,109 @@ export default function App() {
   const handleRefresh = async () => {
     setLoading(true)
     try {
-      // 构建请求参数
-      const params = new URLSearchParams({
-        page: '1',
-        pageSize: '15',
-        city: config.city,
-        encryptExpectId: '',
-        mixExpectType: '',
-        expectInfo: '',
-        jobType: config.jobType || '1901',
-        salary: '',
-        experience: '',
-        degree: '',
-        industry: '',
-        scale: '',
-        _: Date.now().toString()
-      })
-
-      // 发送消息给service worker
-      getChromeAPI().runtime.sendMessage(
-        {
-          type: MessageType.FETCH_JOBS,
-          config: config,
-          params: params.toString()
-        },
-        (response: unknown) => {
-          try {
-            const fetchResponse = response as { success: boolean; data?: JobData[]; error?: string }
-            if (!fetchResponse) {
-              console.error('No response from service worker')
-              setLoading(false)
-              return
-            }
-            
-            if (fetchResponse.success && fetchResponse.data) {
-              // 更新统计信息
-              const newStats: CollectionStats = {
-                total: fetchResponse.data.length,
-                lastUpdate: new Date().toLocaleString('zh-CN'),
-                source: 'BOSS直聘'
-              }
-              setStats(newStats)
-              getChromeAPI().storage.local.set({ stats: newStats })
-
-              // 保存数据
-              setJobs(fetchResponse.data)
-              getChromeAPI().storage.local.set({ jobsData: fetchResponse.data })
-
-              // 切换到结果标签
-              setActiveTab('results')
-            } else {
-              console.error('Failed to fetch jobs:', fetchResponse.error)
-            }
-          } catch (error) {
-            console.error('Error processing response:', error)
-          } finally {
-            setLoading(false)
-          }
+      // 为BOSS直聘构建请求参数
+      if (config.website === 'boss') {
+        const params: Record<string, string> = {
+          page: '1',
+          pageSize: '15',
+          city: config.city,
+          encryptExpectId: '',
+          mixExpectType: '',
+          expectInfo: '',
         }
-      )
+
+        // 使用职位代码（优先使用三级，其次使用二级）
+        if (config.jobSubType) {
+          params.expectId = config.jobSubType
+        } else if (config.jobType) {
+          params.expectId = config.jobType
+        }
+
+        // 添加可选参数
+        if (config.salary && config.salary.length > 0) {
+          params.salary = config.salary.join(',')
+        }
+        if (config.degree && config.degree.length > 0) {
+          params.degree = config.degree.join(',')
+        }
+        if (config.jobRecType && config.jobRecType.length > 0) {
+          params.jobType = config.jobRecType.join(',')
+        }
+        if (config.experience && config.experience.length > 0) {
+          params.experience = config.experience.join(',')
+        }
+
+        params._ = Date.now().toString()
+
+        // 发送消息给service worker
+        getChromeAPI().runtime.sendMessage(
+          {
+            type: MessageType.FETCH_JOBS,
+            config: config,
+            params: new URLSearchParams(params).toString()
+          },
+          (response: unknown) => {
+            handleFetchResponse(response)
+          }
+        )
+      } else {
+        // 其他网站的简化参数构建
+        const params = new URLSearchParams({
+          page: '1',
+          pageSize: '15',
+          city: config.city,
+          jobType: config.jobType || '',
+          _: Date.now().toString()
+        })
+
+        getChromeAPI().runtime.sendMessage(
+          {
+            type: MessageType.FETCH_JOBS,
+            config: config,
+            params: params.toString()
+          },
+          (response: unknown) => {
+            handleFetchResponse(response)
+          }
+        )
+      }
     } catch (error) {
       console.error('Error:', error)
+      setLoading(false)
+    }
+  }
+
+  const handleFetchResponse = (response: unknown) => {
+    try {
+      const fetchResponse = response as { success: boolean; data?: JobData[]; error?: string }
+      if (!fetchResponse) {
+        console.error('No response from service worker')
+        setLoading(false)
+        return
+      }
+
+      if (fetchResponse.success && fetchResponse.data) {
+        // 更新统计信息
+        const newStats: CollectionStats = {
+          total: fetchResponse.data.length,
+          lastUpdate: new Date().toLocaleString('zh-CN'),
+          source: config.website === 'boss' ? 'BOSS直聘' : '其他平台'
+        }
+        setStats(newStats)
+        getChromeAPI().storage.local.set({ stats: newStats })
+
+        // 保存数据
+        setJobs(fetchResponse.data)
+        getChromeAPI().storage.local.set({ jobsData: fetchResponse.data })
+
+        // 切换到结果标签
+        setActiveTab('results')
+      } else {
+        console.error('Failed to fetch jobs:', fetchResponse.error)
+      }
+    } catch (error) {
+      console.error('Error processing response:', error)
+    } finally {
       setLoading(false)
     }
   }

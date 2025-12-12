@@ -14,18 +14,89 @@ export interface FilterConfig {
   district: string
   /** 职位名称 */
   jobTitle: string
-  /** 职位类型 */
+  /** 职位类别代码 (一级) */
+  jobCategory?: string
+  /** 职位类型代码 (二级) */
   jobType: string
+  /** 职位子类型代码 (三级) */
+  jobSubType?: string
+  /** 薪资范围代码 */
+  salary?: string[]
+  /** 学历要求代码 */
+  degree?: string[]
+  /** 求职类型代码 */
+  jobRecType?: string[]
+  /** 工作经验要求代码 */
+  experience?: string[]
   /** 最小年龄 */
   minAge: number
   /** 最大年龄 */
   maxAge: number
-  /** 最小薪资 (K) */
-  minSalary: number
-  /** 最大薪资 (K) */
-  maxSalary: number
   /** 技能标签 */
   skills: string[]
+}
+
+/**
+ * 城市数据结构
+ */
+export interface CityOption {
+  name: string
+  code: number
+  url: string
+}
+
+/**
+ * 职位分类数据结构
+ */
+export interface JobCategory {
+  code: number
+  name: string
+  tip: string | null
+  subLevelModelList: JobPosition[] | null
+}
+
+/**
+ * 职位详细数据结构
+ */
+export interface JobPosition {
+  code: number
+  name: string
+  tip: string | null
+  subLevelModelList: JobSubType[] | null
+}
+
+/**
+ * 职位子类型
+ */
+export interface JobSubType {
+  code: number
+  name: string
+  tip: string | null
+  subLevelModelList: null
+}
+
+/**
+ * 薪资选项
+ */
+export interface SalaryOption {
+  code: string
+  label: string
+}
+
+/**
+ * 学历选项
+ */
+export interface DegreeOption {
+  code: string
+  label: string
+}
+
+/**
+ * 求职类型选项
+ */
+export interface JobTypeOption {
+  code: string
+  label: string
 }
 
 /**
