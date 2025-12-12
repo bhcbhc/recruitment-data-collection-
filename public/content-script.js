@@ -62,43 +62,39 @@ function extractPageData() {
 }
 
 /**
- * 注入脚本用于访问页面全局变量
+ * 使用外部脚本文件注入 - 符合 Manifest V3 的做法
+ * 通过 <script> 标签加载外部脚本，避免内联脚本的CSP限制
  */
-function injectScript(source) {
+function injectExternalScript() {
   try {
+    // 获取inject.js的URL
+    const scriptUrl = chrome.runtime.getURL('inject.js');
+    
+    // 创建script标签并设置src属性
     const script = document.createElement('script');
+    script.src = scriptUrl;
     script.type = 'text/javascript';
-    script.textContent = source;
+    script.onload = function() {
+      console.log('External script injected successfully');
+      script.remove();
+    };
+    script.onerror = function() {
+      console.error('Failed to load external script');
+      script.remove();
+    };
+    
+    // 插入到页面中
     (document.documentElement || document.head || document.body).appendChild(script);
-    script.remove();
   } catch (error) {
-    console.error('Error injecting script:', error);
+    console.error('Error injecting external script:', error);
   }
 }
 
-/**
- * 页面数据注入 - 用于访问页面的全局状态
- */
-const pageDataInjection = `
-window.recruitmentCollector = {
-  getPageData: function() {
-    // 这里可以访问页面的全局变量和数据
-    return window.__INITIAL_STATE__ || {};
-  },
-  getPageUrl: function() {
-    return window.location.href;
-  },
-  getPageTitle: function() {
-    return document.title;
-  }
-};
-console.log('Page data injection completed');
-`;
-
-try {
-  injectScript(pageDataInjection);
-} catch (error) {
-  console.error('Error setting up page data injection:', error);
+// 页面加载完成后注入脚本
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', injectExternalScript);
+} else {
+  injectExternalScript();
 }
 
 

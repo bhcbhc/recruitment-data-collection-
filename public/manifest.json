@@ -16,8 +16,7 @@
     "contextMenus",
     "tabs",
     "notifications",
-    
-    "storage", 
+    "storage",
     "alarms",
     "activeTab",
     "scripting"
@@ -36,9 +35,15 @@
       "js": ["content-script.js"]
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.js"],
+      "matches": ["https://www.zhipin.com/*"],
+      "use_dynamic_url": false
+    }
+  ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    "content_scripts": "script-src 'self'; object-src 'self'"
   }
 }
-
-
